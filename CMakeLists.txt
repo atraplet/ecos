@@ -6,6 +6,12 @@ project(ecos
         VERSION 2.0.8
         LANGUAGES C)
 
+if(MINGW)
+    set(CMAKE_SHARED_LIBRARY_PREFIX "")
+else()
+    set(CMAKE_SHARED_LIBRARY_PREFIX "lib")
+endif()
+
 # Options
 option(USE_LONG "Whether to use Long or Int for index type." ON)
 
@@ -82,7 +88,7 @@ add_library(ecos SHARED ${ecos_headers} ${ecos_sources})
 # Set compiler options and definitions
 target_compile_options(ecos PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_OPTIONS}>")
 target_compile_options(ecos PRIVATE "$<$<CONFIG:RELEASE>:${RELEASE_OPTIONS}>")
-target_compile_definitions(ecos PUBLIC CTRLC=1)
+target_compile_definitions(ecos PUBLIC CTRLC=0)
 if(USE_LONG)
     target_compile_definitions(ecos PUBLIC LDL_LONG DLONG)
 endif()
