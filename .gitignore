@@ -33,3 +33,12 @@ python/*.pyc
 .vscode/
 
 build
+cmake-build-debug/
+cmake-build-debug-wsl/
+cmake-build-release/
+cmake-build-release-wsl/
+/.idea/.gitignore
+/.idea/ecos.iml
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/vcs.xml
