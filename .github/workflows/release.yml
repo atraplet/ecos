@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version
+        required: true
+        type: string
+
+env:
+  LIB_NAME: ecos
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        shell: bash
+        run: |
+          cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" -S ./ -B ./build
+          cmake --build ./build --target all
+      - name: Upload library
+        uses: actions/upload-artifact@v4
+        with:
+          name: lib${{ env.LIB_NAME }}.so
+          path: build/lib${{ env.LIB_NAME }}.so
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          cmake -DCMAKE_BUILD_TYPE=Release -G Ninja -S ./ -B ./build
+          cmake --build ./build --target all
+      - name: Upload library
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.LIB_NAME }}.dll
+          path: build/${{ env.LIB_NAME }}.dll
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        shell: bash
+        run: |
+          cmake -G Xcode -S ./ -B ./build
+          cmake --build ./build --config Release --target ALL_BUILD
+      - name: Upload library
+        uses: actions/upload-artifact@v4
+        with:
+          name: lib${{ env.LIB_NAME }}.dylib
+          path: build/release/lib${{ env.LIB_NAME }}.dylib
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [ build-linux, build-windows, build-macos ]
+    steps:
+      - name: Download libraries
+        uses: actions/download-artifact@v4
+        with:
+          path: build
+          merge-multiple: true
+      - name: Create release text
+        shell: bash
+        run: |
+          echo -e "Shared library release binaries for Linux, Windows, and MacOS.\n\nSHA256 hashes are\n" > release.txt
+          cd build
+          sha256sum lib${{ env.LIB_NAME }}.so >> ../release.txt
+          sha256sum ${{ env.LIB_NAME }}.dll >> ../release.txt
+          sha256sum lib${{ env.LIB_NAME }}.dylib >> ../release.txt
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          fail_on_unmatched_files: true
+          body_path: release.txt
+          files: |
+            build/lib${{ env.LIB_NAME }}.so
+            build/${{ env.LIB_NAME }}.dll
+            build/lib${{ env.LIB_NAME }}.dylib
